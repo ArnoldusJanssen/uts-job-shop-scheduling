@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Shop Scheduling Solver</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; }
+    header { background: #1a73e8; color: white; padding: 20px; text-align: center; }
+    main { max-width: 800px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+    button { margin-top: 20px; background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1557b0; }
+    #output { margin-top: 30px; border-top: 2px dashed #ccc; padding-top: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Job Shop Scheduling Solver</h1>
+    <p>UTS Riset Operasi — Mini Project</p>
+  </header>
+
+  <main>
+    <h2>Input</h2>
+    <label>Jumlah Job</label>
+    <input type="number" id="jumlahJob" min="1" value="3">
+
+    <label>Jumlah Mesin</label>
+    <input type="number" id="jumlahMesin" min="1" value="2">
+
+    <label>Urutan Mesin per Job (pisahkan dengan koma, per job di baris baru)</label>
+    <textarea id="urutanMesin" rows="3">1,2
+2,1
+1,2</textarea>
+
+    <label>Processing Time per Job (satuan waktu, format sama seperti di atas)</label>
+    <textarea id="processingTime" rows="3">3,5
+4,2
+2,6</textarea>
+
+    <label>Due Date per Job (pisahkan dengan koma)</label>
+    <input type="text" id="dueDate" value="10,15,12">
+
+    <label>Aturan Penjadwalan (Dispatching Rule)</label>
+    <select id="rule">
+      <option value="FCFS">FCFS (First Come First Served)</option>
+      <option value="SPT">SPT (Shortest Processing Time)</option>
+      <option value="EDD">EDD (Earliest Due Date)</option>
+    </select>
+
+    <button onclick="jalankan()">Hitung Jadwal</button>
+
+    <div id="output">
+      <h2>Output</h2>
+      <p><i>(Belum ada hasil — area ini nanti diisi tabel jadwal & Gantt chart oleh tim JS)</i></p>
+    </div>
+  </main>
+
+  <script>
+    function jalankan() {
+      // TODO: tim JS isi logika algoritma di sini
+      alert("Logika algoritma belum diimplementasikan — ini kerangka awal.");
+    }
+  </script>
+</body>
+</html>
