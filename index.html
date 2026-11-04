@@ -5,42 +5,66 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Job Shop Scheduling Solver</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f4f6f8; color: #222; }
     header { background: #1a73e8; color: white; padding: 20px; text-align: center; }
-    main { max-width: 800px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; }
+    main { max-width: 900px; margin: 20px auto; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     label { display: block; margin-top: 15px; font-weight: bold; }
-    input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
-    button { margin-top: 20px; background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; font-family: inherit; border: 1px solid #ccc; border-radius: 4px; }
+    textarea { font-family: Consolas, monospace; }
+    button { margin-top: 20px; background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 15px; }
     button:hover { background: #1557b0; }
     #output { margin-top: 30px; border-top: 2px dashed #ccc; padding-top: 20px; }
+    
+    /* Style Komponen Output & Gantt Chart */
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: center; font-size: 14px; }
+    th { background: #eef3fa; }
+    .row { display: flex; align-items: center; margin: 6px 0; }
+    .label-m { width: 95px; font-size: 13px; font-weight: 600; }
+    .track { position: relative; flex: 1; height: 30px; background: #eef1f5; border-radius: 4px; }
+    .block { position: absolute; top: 3px; height: 24px; border-radius: 4px; color: #fff; font-size: 11px;
+             display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; font-weight: bold; }
+    .best { background-color: #e8f8f0; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 13px; }
+    .legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+    .error-msg { color: #c0392b; font-weight: bold; margin-top: 10px; }
+    details { margin-top: 8px; }
+    summary { cursor: pointer; font-weight: 600; color: #1a73e8; margin-top: 4px; }
   </style>
 </head>
 <body>
   <header>
     <h1>Job Shop Scheduling Solver</h1>
+    <h2>[Nama Anggota 1 (NIM)] &middot; [Nama Anggota 2 (NIM)] &middot; [Nama Anggota 3 (NIM)]</h2>
+    <h3>Teknik Industri</h3>
+    <h3>UPN Veteran Jakarta</h3>
+    <h3>2026</h3>
     <p>UTS Riset Operasi — Mini Project</p>
   </header>
 
   <main>
     <h2>Input</h2>
     <label>Jumlah Job</label>
-    <input type="number" id="jumlahJob" min="1" value="3">
+    <input type="number" id="jumlahJob" min="1" value="4">
 
     <label>Jumlah Mesin</label>
-    <input type="number" id="jumlahMesin" min="1" value="2">
+    <input type="number" id="jumlahMesin" min="1" value="3">
 
     <label>Urutan Mesin per Job (pisahkan dengan koma, per job di baris baru)</label>
-    <textarea id="urutanMesin" rows="3">1,2
-2,1
-1,2</textarea>
+    <textarea id="urutanMesin" rows="3">Potong,Rakit,Finishing
+Potong,Finishing,Rakit
+Rakit,Potong,Finishing
+Finishing,Potong,Rakit</textarea>
 
     <label>Processing Time per Job (satuan waktu, format sama seperti di atas)</label>
-    <textarea id="processingTime" rows="3">3,5
-4,2
-2,6</textarea>
+    <textarea id="processingTime" rows="3">3,4,2
+5,3,4
+4,5,2
+2,2,3</textarea>
 
     <label>Due Date per Job (pisahkan dengan koma)</label>
-    <input type="text" id="dueDate" value="10,15,12">
+    <input type="text" id="dueDate" value="12,20,15,10">
 
     <label>Aturan Penjadwalan (Dispatching Rule)</label>
     <select id="rule">
@@ -51,16 +75,188 @@
 
     <button onclick="jalankan()">Hitung Jadwal</button>
 
+    <div id="err" class="error-msg"></div>
+
     <div id="output">
       <h2>Output</h2>
-      <p><i>(Belum ada hasil — area ini nanti diisi tabel jadwal & Gantt chart oleh tim JS)</i></p>
     </div>
   </main>
 
   <script>
+    const WARNA = ['#4e79a7', '#f28e2b', '#59a14f', '#e15759', '#b07aa1', '#76b7b2', '#edc948', '#ff9da7'];
+    const esc = s => String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    function parseInputUI() {
+      const numJobs = parseInt(document.getElementById('jumlahJob').value);
+      const numMachines = parseInt(document.getElementById('jumlahMesin').value);
+      const urutanLines = document.getElementById('urutanMesin').value.trim().split('\n').map(l => l.trim()).filter(l => l);
+      const procLines = document.getElementById('processingTime').value.trim().split('\n').map(l => l.trim()).filter(l => l);
+      const dueArr = document.getElementById('dueDate').value.split(',').map(s => parseFloat(s.trim()));
+
+      const errors = [];
+
+      if (urutanLines.length !== numJobs) {
+        errors.push(`Jumlah baris Urutan Mesin (${urutanLines.length}) tidak sesuai dengan Jumlah Job (${numJobs}).`);
+      }
+      if (procLines.length !== numJobs) {
+        errors.push(`Jumlah baris Processing Time (${procLines.length}) tidak sesuai dengan Jumlah Job (${numJobs}).`);
+      }
+      if (dueArr.length !== numJobs) {
+        errors.push(`Jumlah Due Date (${dueArr.length}) tidak sesuai dengan Jumlah Job (${numJobs}).`);
+      }
+
+      if (errors.length > 0) return { jobs: [], errors };
+
+      const jobs = [];
+      for (let i = 0; i < numJobs; i++) {
+        const mList = urutanLines[i].split(',').map(s => 'Mesin ' + s.trim());
+        const dList = procLines[i].split(',').map(s => parseFloat(s.trim()));
+        const due = dueArr[i];
+
+        if (mList.length !== dList.length) {
+          errors.push(`Job ${i + 1}: Jumlah mesin (${mList.length}) != jumlah durasi (${dList.length}).`);
+        }
+        if (dList.some(x => isNaN(x) || x <= 0)) {
+          errors.push(`Job ${i + 1}: Durasi harus angka > 0.`);
+        }
+        if (isNaN(due) || due < 0) {
+          errors.push(`Job ${i + 1}: Due date tidak valid.`);
+        }
+
+        jobs.push({
+          name: `Job ${i + 1}`,
+          ops: mList.map((mk, k) => ({ machine: mk, pt: dList[k] })),
+          due: due
+        });
+      }
+
+      return { jobs, errors };
+    }
+
+    function simulate(jobs, rule) {
+      const machines = [...new Set(jobs.flatMap(j => j.ops.map(o => o.machine)))].sort();
+      const mFree = {}, mBusy = {};
+      machines.forEach(m => { mFree[m] = 0; mBusy[m] = 0; });
+      const ready = jobs.map(() => 0), idx = jobs.map(() => 0), done = jobs.map(() => 0);
+      const gantt = [];
+      const total = jobs.reduce((s, j) => s + j.ops.length, 0);
+      let count = 0, guard = 0;
+
+      while (count < total && guard++ < 5000) {
+        const cands = [];
+        jobs.forEach((j, i) => {
+          if (idx[i] < j.ops.length) {
+            const op = j.ops[idx[i]];
+            cands.push({ i, m: op.machine, pt: op.pt, start: Math.max(ready[i], mFree[op.machine]) });
+          }
+        });
+        if (cands.length === 0) break;
+
+        const tMin = Math.min(...cands.map(c => c.start));
+        const byM = {};
+        cands.filter(c => c.start === tMin).forEach(c => (byM[c.m] = byM[c.m] || []).push(c));
+
+        machines.forEach(m => {
+          const list = byM[m];
+          if (!list) return;
+          const due = c => jobs[c.i].due;
+
+          if (rule === 'FCFS') list.sort((a, b) => ready[a.i] - ready[b.i] || due(a) - due(b) || a.i - b.i);
+          if (rule === 'SPT')  list.sort((a, b) => a.pt - b.pt || due(a) - due(b) || a.i - b.i);
+          if (rule === 'EDD')  list.sort((a, b) => due(a) - due(b) || a.pt - b.pt || a.i - b.i);
+
+          const p = list[0];
+          const start = Math.max(ready[p.i], mFree[m]);
+          const end = start + p.pt;
+
+          gantt.push({ job: jobs[p.i].name, ji: p.i, machine: m, start, end });
+          mFree[m] = end;
+          mBusy[m] += p.pt;
+          ready[p.i] = end;
+          idx[p.i]++;
+          if (idx[p.i] === jobs[p.i].ops.length) done[p.i] = end;
+          count++;
+        });
+      }
+
+      const makespan = Math.max(...done);
+      const tard = jobs.map((j, i) => Math.max(0, done[i] - j.due));
+      const util = machines.map(m => ({ m, pct: 100 * mBusy[m] / makespan }));
+
+      return {
+        gantt, done, makespan, tard, util,
+        avgTard: tard.reduce((a, b) => a + b, 0) / jobs.length,
+        avgUtil: util.reduce((a, b) => a + b.pct, 0) / util.length
+      };
+    }
+
     function jalankan() {
-      // TODO: tim JS isi logika algoritma di sini
-      alert("Logika algoritma belum diimplementasikan — ini kerangka awal.");
+      const errEl = document.getElementById('err');
+      const outEl = document.getElementById('output');
+      errEl.innerHTML = '';
+
+      const { jobs, errors } = parseInputUI();
+      if (errors.length || !jobs.length) {
+        errEl.innerHTML = errors.join('<br>');
+        return;
+      }
+
+      const selectedRule = document.getElementById('rule').value;
+      let rulesToSimulate = ['FCFS', 'SPT', 'EDD'];
+      
+      const allResults = rulesToSimulate.map(r => ({ rule: r, ...simulate(jobs, r) }));
+      
+      let displayResults = allResults;
+      if (selectedRule !== 'ALL') {
+        displayResults = allResults.filter(x => x.rule === selectedRule);
+      }
+
+      renderOutput(jobs, allResults, displayResults);
+    }
+
+    function renderOutput(jobs, allResults, displayResults) {
+      const machines = [...new Set(jobs.flatMap(j => j.ops.map(o => o.machine)))].sort();
+      let h = '<h2>Output Hasil Penjadwalan</h2>';
+
+      // Output 1: bukti Job Shop (Urutan Mesin per Job)
+      h += '<div class="card"><b>Output 1 — Urutan Mesin per Job</b> (Job Shop)<table><tr><th>Job</th><th>Urutan Mesin & Processing Time</th><th>Due Date</th></tr>' +
+        jobs.map(j => '<tr><td><b>' + esc(j.name) + '</b></td><td>' + j.ops.map(o => `${esc(o.machine)} (${o.pt})`).join(' → ') + '</td><td>' + j.due + '</td></tr>').join('') + 
+        '</table></div>';
+
+      // Output 2: Ringkasan Perbandingan
+      const bMS = Math.min(...allResults.map(x => x.makespan));
+      h += '<div class="card"><b>Output 2 — Ringkasan Perbandingan Aturan Prioritas</b><table><tr><th>Aturan</th><th>Makespan</th><th>Rata-rata Tardiness</th><th>Total Tardiness</th><th>Rata-rata Utilisasi</th></tr>' +
+        allResults.map(x => '<tr class="' + (x.makespan === bMS ? 'best' : '') + '"><td><b>' + x.rule + '</b>' + (x.makespan === bMS ? ' 🏆' : '') + '</td><td>' + x.makespan + '</td><td>' + x.avgTard.toFixed(2) + '</td><td>' + (x.avgTard * jobs.length).toFixed(0) + '</td><td>' + x.avgUtil.toFixed(1) + '%</td></tr>').join('') + 
+        '</table></div>';
+
+      // Output Visual: Gantt Chart dan Tabel Detail per Aturan yang Dipilih
+      displayResults.forEach(x => {
+        const mk = x.makespan;
+        h += '<div class="card"><h3>Output 3 — Gantt Chart — Aturan ' + x.rule + ' (Makespan = ' + mk + ')</h3><div>';
+        machines.forEach(m => {
+          h += '<div class="row"><div class="label-m">' + esc(m) + '</div><div class="track">' +
+            x.gantt.filter(g => g.machine === m).map(g =>
+              '<div class="block" style="left:' + (g.start / mk * 100) + '%;width:' + ((g.end - g.start) / mk * 100) + '%;background:' + WARNA[g.ji % WARNA.length] + '" title="' + esc(g.job) + ': ' + g.start + '–' + g.end + '">' + esc(g.job) + ' (' + g.start + '–' + g.end + ')</div>'
+            ).join('') +
+            '</div></div>';
+        });
+        h += '</div><div class="legend">' + jobs.map((j, i) => '<span><i style="background:' + WARNA[i % WARNA.length] + '"></i>' + esc(j.name) + '</span>').join('') + '</div>';
+
+        // Details / Dropdown Verifikasi
+        h += '<details><summary>Output 4 — Tabel Operasi (Verifikasi Manual)</summary><table><tr><th>#</th><th>Job</th><th>Mesin</th><th>Mulai</th><th>Selesai</th><th>Durasi (PT)</th></tr>' +
+          x.gantt.map((g, k) => '<tr><td>' + (k + 1) + '</td><td>' + esc(g.job) + '</td><td>' + esc(g.machine) + '</td><td>' + g.start + '</td><td>' + g.end + '</td><td>' + (g.end - g.start) + '</td></tr>').join('') + 
+          '</table></details>';
+
+        h += '<details><summary> Output 5 — Completion Time vs Due Date</summary><table><tr><th>Job</th><th>Completion Time (Cj)</th><th>Due Date (dj)</th><th>Tardiness (Tj = max(0, Cj−dj))</th></tr>' +
+          jobs.map((j, i) => '<tr><td>' + esc(j.name) + '</td><td>' + x.done[i] + '</td><td>' + j.due + '</td><td>' + x.tard[i] + '</td></tr>').join('') + 
+          '</table></details>';
+
+        h += '<details><summary>Output 6 — Utilisasi per Mesin</summary><table><tr><th>Mesin</th><th>Utilisasi</th></tr>' +
+          x.util.map(u => '<tr><td>' + esc(u.m) + '</td><td>' + u.pct.toFixed(1) + '%</td></tr>').join('') + 
+          '</table></details></div>';
+      });
+
+      document.getElementById('output').innerHTML = h;
     }
   </script>
 </body>
