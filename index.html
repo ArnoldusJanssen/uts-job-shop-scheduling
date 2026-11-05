@@ -116,7 +116,7 @@ Finishing,Potong,Rakit</textarea>
         const due = dueArr[i];
 
         if (mList.length !== dList.length) {
-          errors.push(`Job ${i + 1}: Jumlah mesin (${mList.length}) != jumlah durasi (${dList.length}).`);
+          errors.push(`Job ${i + 1}: Jumlah mesin (${mList.length}) tidak sesuai dengan jumlah durasi (${dList.length}).`);
         }
         if (dList.some(x => isNaN(x) || x <= 0)) {
           errors.push(`Job ${i + 1}: Durasi harus angka > 0.`);
